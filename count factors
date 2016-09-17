@@ -1,0 +1,54 @@
+import sys
+from pyspark import SparkConf, SparkContext
+import numpy as np
+import scipy.sparse as sps
+from pyspark.mllib.linalg import Vectors
+from pyspark.mllib.linalg import SparseVector
+from pyspark.mllib.regression import LabeledPoint
+from numpy import linalg as LA
+import matplotlib.pyplot as plt
+
+def parseData(line):
+  data = line.split(",")
+  index= data[0] # the index number, this number is not equal to row number
+  features = data[1:]
+  return LabeledPoint(index, features)
+
+""" 
+multiply matrix A by vector x
+"""
+
+if __name__ == "__main__":
+    # set up environment
+  conf = SparkConf()
+  conf.setAppName("columns_reduction")
+  sc = SparkContext(conf=conf)
+
+  inputData = sc.textFile("/home/tal214/kagglebosch/data/non_nan_test1.csv")
+  factorlist = inputData.take(1)[0].split(',')
+  factorname = factorlist[2:]
+  numoffactor = len(factorname)
+  header = inputData.first()
+  inputData = inputData.filter(lambda x :x != header)
+#  print factorlist[1:]
+#  print factorlist[1]
+#  print len(factorlist)
+  def findfactor(line):
+    data = line.split(',')[1:]
+    ID = data[0]
+    output = []
+    for i in range(numoffactor):
+      if len(data[i+1])>0:
+        output.append([factorname[i],[ID,data[i+1]]])
+    return output
+  
+  data = inputData.flatMap(findfactor).reduceByKey(lambda a,b:a+b).collect()
+  print data
+  fw = open('result1.txt','w')
+  fw.close()
+  sc.stop()  
+    
+#  data = inputData.map(parseData).collect()
+#  totalPoints = data.count()
+#  print totalPoints
+#  print data[1:5]
